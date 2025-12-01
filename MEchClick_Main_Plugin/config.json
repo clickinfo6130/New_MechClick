@@ -1,0 +1,22 @@
+{
+  "DatabasePath": "./Database",
+  "CoreDatabase": "standard_core.db",
+  "VendorDatabasePath": "./Database/vendors",
+  "EnabledVendors": [
+    "STANDARD",
+    "SMC",
+    "THK"
+  ],
+  "VendorFiles": {
+    "SMC": "vendor_smc.db",
+    "CKD": "vendor_ckd.db",
+    "FESTO": "vendor_festo.db",
+    "THK": "vendor_thk.db",
+    "HIWIN": "vendor_hiwin.db",
+    "NSK": "vendor_nsk.db",
+    "ORIENTAL": "vendor_oriental.db",
+    "MITSUBISHI": "vendor_mitsubishi.db"
+  },
+  "DefaultLanguage": "ko",
+  "AutoUpdate": true
+}

@@ -1,0 +1,425 @@
+{
+  "Series": [
+    {
+      "name": "육각머리볼트",
+      "id": 1,
+      "option": [
+        {
+          "id": 0,
+          "name": "타입",
+          "default_Value": "0",
+          "values": [
+            {
+              "enumid": 0,
+              "name": "KS",
+              "desc": "",
+              "filter": ["-1"],
+              "filter_Values": [["-1"]]
+            },
+            {
+              "enumid": 1,
+              "name": "ISO",
+              "desc": "",
+              "filter": ["-1"],
+              "filter_Values": [["-1"]]
+            },
+            {
+              "enumid": 2,
+              "name": "DIN",
+              "desc": "",
+              "filter": ["-1"],
+              "filter_Values": [["-1"]]
+            },
+            {
+              "enumid": 3,
+              "name": "JIS",
+              "desc": "",
+              "filter": ["-1"],
+              "filter_Values": [["-1"]]
+            }
+          ],
+          "type": "COMBO"
+        },
+        {
+          "id": 1,
+          "name": "규격(표준번호)",
+          "default_Value": "0",
+          "values": [
+            {
+              "enumid": 0,
+              "name": "KS B 1002:2016",
+              "desc": "",
+              "filter": ["0"],
+              "filter_Values": [["0"]]
+            },
+            {
+              "enumid": 1,
+              "name": "KS W ISO 7913:2023",
+              "desc": "",
+              "filter": ["0"],
+              "filter_Values": [["0"]]
+            },
+            {
+              "enumid": 2,
+              "name": "ISO 4014",
+              "desc": "",
+              "filter": ["0"],
+              "filter_Values": [["1"]]
+            },
+            {
+              "enumid": 3,
+              "name": "ISO 4017",
+              "desc": "",
+              "filter": ["0"],
+              "filter_Values": [["1"]]
+            },
+            {
+              "enumid": 4,
+              "name": "DIN 931",
+              "desc": "",
+              "filter": ["0"],
+              "filter_Values": [["2"]]
+            },
+            {
+              "enumid": 5,
+              "name": "DIN 933",
+              "desc": "",
+              "filter": ["0"],
+              "filter_Values": [["2"]]
+            },
+            {
+              "enumid": 6,
+              "name": "JIS B 1180:2014",
+              "desc": "",
+              "filter": ["0"],
+              "filter_Values": [["3"]]
+            }
+          ],
+          "type": "COMBO"
+        },
+        {
+          "id": 2,
+          "name": "용도",
+          "default_Value": "0",
+          "values": [
+            {
+              "enumid": 0,
+              "name": "기계용",
+              "desc": "",
+              "filter": ["1"],
+              "filter_Values": [["0", "1"]]
+            },
+            {
+              "enumid": 1,
+              "name": "PC용",
+              "desc": "",
+              "filter": ["1"],
+              "filter_Values": [["0"]]
+            },
+            {
+              "enumid": 2,
+              "name": "특수용",
+              "desc": "",
+              "filter": ["1"],
+              "filter_Values": [["0"]]
+            },
+            {
+              "enumid": 3,
+              "name": "항공우주용",
+              "desc": "",
+              "filter": ["1"],
+              "filter_Values": [["1"]]
+            },
+            {
+              "enumid": 4,
+              "name": "일반",
+              "desc": "",
+              "filter": ["1"],
+              "filter_Values": [["2", "3", "4", "5", "6"]]
+            }
+          ],
+          "type": "COMBO"
+        },
+        {
+          "id": 3,
+          "name": "재질",
+          "default_Value": "0",
+          "values": [
+            {
+              "enumid": 0,
+              "name": "S10C",
+              "desc": "",
+              "filter": ["2"],
+              "filter_Values": [["0"]]
+            },
+            {
+              "enumid": 1,
+              "name": "SS400",
+              "desc": "",
+              "filter": ["2"],
+              "filter_Values": [["0"]]
+            },
+            {
+              "enumid": 2,
+              "name": "SUS304",
+              "desc": "",
+              "filter": ["2"],
+              "filter_Values": [["0", "4"]]
+            },
+            {
+              "enumid": 3,
+              "name": "SUS316",
+              "desc": "",
+              "filter": ["2"],
+              "filter_Values": [["0", "4"]]
+            },
+            {
+              "enumid": 4,
+              "name": "S45C",
+              "desc": "",
+              "filter": ["2"],
+              "filter_Values": [["0"]]
+            },
+            {
+              "enumid": 5,
+              "name": "PC",
+              "desc": "",
+              "filter": ["2"],
+              "filter_Values": [["1"]]
+            },
+            {
+              "enumid": 6,
+              "name": "RENY",
+              "desc": "",
+              "filter": ["2"],
+              "filter_Values": [["1"]]
+            },
+            {
+              "enumid": 7,
+              "name": "SCM435",
+              "desc": "",
+              "filter": ["2"],
+              "filter_Values": [["2", "3"]]
+            }
+          ],
+          "type": "COMBO"
+        },
+        {
+          "id": 4,
+          "name": "나사종류(Pich)",
+          "default_Value": "0",
+          "values": [
+            {
+              "enumid": 0,
+              "name": "보통나사",
+              "desc": "",
+              "filter": ["3"],
+              "filter_Values": [["0", "1", "2", "3", "4", "5", "6", "7"]]
+            },
+            {
+              "enumid": 1,
+              "name": "가는나사",
+              "desc": "",
+              "filter": ["3"],
+              "filter_Values": [["0", "1", "2", "3", "4", "5", "6", "7"]]
+            }
+          ],
+          "type": "COMBO"
+        },
+        {
+          "id": 5,
+          "name": "머리형식(Type)",
+          "default_Value": "0",
+          "values": [
+            {
+              "enumid": 0,
+              "name": "기본",
+              "desc": "",
+              "filter": ["4"],
+              "filter_Values": [["0", "1"]]
+            },
+            {
+              "enumid": 1,
+              "name": "자리붙이",
+              "desc": "",
+              "filter": ["4"],
+              "filter_Values": [["0", "1"]]
+            }
+          ],
+          "type": "COMBO"
+        },
+        {
+          "id": 6,
+          "name": "사이즈",
+          "default_Value": "0",
+          "values": [
+            {
+              "enumid": 0,
+              "name": "M3",
+              "desc": "",
+              "filter": ["5"],
+              "filter_Values": [["0", "1"]]
+            },
+            {
+              "enumid": 1,
+              "name": "M4",
+              "desc": "",
+              "filter": ["5"],
+              "filter_Values": [["0", "1"]]
+            },
+            {
+              "enumid": 2,
+              "name": "M5",
+              "desc": "",
+              "filter": ["5"],
+              "filter_Values": [["0", "1"]]
+            },
+            {
+              "enumid": 3,
+              "name": "M6",
+              "desc": "",
+              "filter": ["5"],
+              "filter_Values": [["0", "1"]]
+            },
+            {
+              "enumid": 4,
+              "name": "M8",
+              "desc": "",
+              "filter": ["5"],
+              "filter_Values": [["0", "1"]]
+            },
+            {
+              "enumid": 5,
+              "name": "M10",
+              "desc": "",
+              "filter": ["5"],
+              "filter_Values": [["0", "1"]]
+            },
+            {
+              "enumid": 6,
+              "name": "M12",
+              "desc": "",
+              "filter": ["5"],
+              "filter_Values": [["0", "1"]]
+            },
+            {
+              "enumid": 7,
+              "name": "M14",
+              "desc": "",
+              "filter": ["5"],
+              "filter_Values": [["0", "1"]]
+            },
+            {
+              "enumid": 8,
+              "name": "M16",
+              "desc": "",
+              "filter": ["5"],
+              "filter_Values": [["0", "1"]]
+            },
+            {
+              "enumid": 9,
+              "name": "M20",
+              "desc": "",
+              "filter": ["5"],
+              "filter_Values": [["0", "1"]]
+            },
+            {
+              "enumid": 10,
+              "name": "M24",
+              "desc": "",
+              "filter": ["5"],
+              "filter_Values": [["0", "1"]]
+            }
+          ],
+          "type": "LISTBOX"
+        },
+        {
+          "id": 7,
+          "name": "표면처리",
+          "default_Value": "0",
+          "values": [
+            {
+              "enumid": 0,
+              "name": "없음",
+              "desc": "",
+              "filter": ["6"],
+              "filter_Values": [["-1"]]
+            },
+            {
+              "enumid": 1,
+              "name": "아연도금",
+              "desc": "",
+              "filter": ["6"],
+              "filter_Values": [["-1"]]
+            },
+            {
+              "enumid": 2,
+              "name": "니켈도금",
+              "desc": "",
+              "filter": ["6"],
+              "filter_Values": [["-1"]]
+            },
+            {
+              "enumid": 3,
+              "name": "크롬도금",
+              "desc": "",
+              "filter": ["6"],
+              "filter_Values": [["-1"]]
+            },
+            {
+              "enumid": 4,
+              "name": "흑색도금",
+              "desc": "",
+              "filter": ["6"],
+              "filter_Values": [["-1"]]
+            }
+          ],
+          "type": "COMBO"
+        },
+        {
+          "id": 8,
+          "name": "볼트끝단",
+          "default_Value": "0",
+          "values": [
+            {
+              "enumid": 0,
+              "name": "평면",
+              "desc": "",
+              "filter": ["6"],
+              "filter_Values": [["-1"]]
+            },
+            {
+              "enumid": 1,
+              "name": "챔퍼",
+              "desc": "",
+              "filter": ["6"],
+              "filter_Values": [["-1"]]
+            },
+            {
+              "enumid": 2,
+              "name": "라운드",
+              "desc": "",
+              "filter": ["6"],
+              "filter_Values": [["-1"]]
+            }
+          ],
+          "type": "COMBO"
+        },
+        {
+          "id": 9,
+          "name": "전체길이",
+          "default_Value": "0",
+          "values": [],
+          "type": "EDITBOX"
+        },
+        {
+          "id": 10,
+          "name": "유효길이",
+          "default_Value": "0",
+          "values": [],
+          "type": "EDITBOX"
+        }
+      ]
+    }
+  ]
+}
