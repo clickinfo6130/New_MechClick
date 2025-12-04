@@ -1,0 +1,136 @@
+<Window x:Class="DimensionManager.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="치수 데이터 관리자" 
+        Height="700" Width="1200"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 툴바 -->
+        <ToolBar Grid.Row="0" Margin="5">
+            <Button x:Name="BtnLoadExcel" Content="📂 엑셀 파일 열기" Click="BtnLoadExcel_Click"/>
+            <Separator/>
+            <Button x:Name="BtnDbSettings" Content="⚙ DB 설정" Click="BtnDbSettings_Click"/>
+            <Button x:Name="BtnTestConnection" Content="🔌 연결 테스트" Click="BtnTestConnection_Click"/>
+            <Button x:Name="BtnCreateTables" Content="📋 테이블 생성" Click="BtnCreateTables_Click"/>
+            <Separator/>
+            <Button x:Name="BtnSaveToDb" Content="💾 DB에 저장" Click="BtnSaveToDb_Click" 
+                    Background="#4CAF50" Foreground="White" FontWeight="Bold"/>
+        </ToolBar>
+
+        <!-- 파일 정보 및 요약 -->
+        <GroupBox Grid.Row="1" Header="Import 정보" Margin="10,5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="파일:" Margin="5" FontWeight="Bold"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" x:Name="TxtFileName" Text="-" Margin="5" 
+                           TextTrimming="CharacterEllipsis"/>
+
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="Part Code:" Margin="5" FontWeight="Bold"/>
+                <TextBlock Grid.Row="0" Grid.Column="3" x:Name="TxtPartCode" Text="-" Margin="5"
+                           Foreground="Blue" FontWeight="Bold"/>
+
+                <TextBlock Grid.Row="0" Grid.Column="4" Text="Standard:" Margin="5" FontWeight="Bold"/>
+                <TextBlock Grid.Row="0" Grid.Column="5" x:Name="TxtStandard" Text="-" Margin="5"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="키 필드:" Margin="5" FontWeight="Bold"/>
+                <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" x:Name="TxtKeyFields" Text="-" Margin="5"
+                           Foreground="DarkOrange"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="4" Text="데이터 행:" Margin="5" FontWeight="Bold"/>
+                <TextBlock Grid.Row="1" Grid.Column="5" x:Name="TxtRowCount" Text="-" Margin="5"/>
+            </Grid>
+        </GroupBox>
+
+        <!-- 탭 컨트롤 -->
+        <TabControl Grid.Row="2" Margin="10,5" x:Name="MainTabControl">
+            <!-- 원본 데이터 탭 -->
+            <TabItem Header="📊 원본 데이터">
+                <DataGrid x:Name="DataGridRaw" 
+                          AutoGenerateColumns="True"
+                          CanUserAddRows="False"
+                          IsReadOnly="True"/>
+            </TabItem>
+
+            <!-- 컬럼 정보 탭 -->
+            <TabItem Header="📋 컬럼 정보 (Meta)">
+                <DataGrid x:Name="DataGridMeta" AutoGenerateColumns="False">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="순서" Binding="{Binding DisplayOrder}" Width="50"/>
+                        <DataGridTextColumn Header="필드명" Binding="{Binding FieldName}" Width="100"/>
+                        <DataGridTextColumn Header="표시명" Binding="{Binding DisplayName}" Width="120"/>
+                        <DataGridTextColumn Header="영문명" Binding="{Binding DisplayNameEn}" Width="100"/>
+                        <DataGridTextColumn Header="데이터타입" Binding="{Binding DataType}" Width="80"/>
+                        <DataGridCheckBoxColumn Header="키필드" Binding="{Binding IsKeyField}" Width="60"/>
+                        <DataGridCheckBoxColumn Header="표시" Binding="{Binding IsDisplayField}" Width="50"/>
+                        <DataGridTextColumn Header="컬럼폭" Binding="{Binding ColumnWidth}" Width="60"/>
+                        <DataGridTextColumn Header="CAD파라미터" Binding="{Binding CadParamName}" Width="100"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <!-- 키 옵션 탭 -->
+            <TabItem Header="🔑 키 옵션">
+                <DataGrid x:Name="DataGridKeyOptions" AutoGenerateColumns="False">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Part Code" Binding="{Binding PartCode}" Width="100"/>
+                        <DataGridTextColumn Header="키 필드" Binding="{Binding KeyFieldName}" Width="100"/>
+                        <DataGridTextColumn Header="레벨" Binding="{Binding KeyLevel}" Width="50"/>
+                        <DataGridTextColumn Header="키 값" Binding="{Binding KeyValue}" Width="150"/>
+                        <DataGridTextColumn Header="상위 키" Binding="{Binding ParentKey}" Width="100"/>
+                        <DataGridTextColumn Header="정렬순서" Binding="{Binding SortOrder}" Width="70"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <!-- 치수 데이터 탭 -->
+            <TabItem Header="📐 치수 데이터 (JSON)">
+                <DataGrid x:Name="DataGridDimensions" AutoGenerateColumns="False">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Part Code" Binding="{Binding PartCode}" Width="80"/>
+                        <DataGridTextColumn Header="Key Composite" Binding="{Binding KeyComposite}" Width="200"/>
+                        <DataGridTextColumn Header="Key Values (JSON)" Binding="{Binding KeyValuesJson}" Width="250"/>
+                        <DataGridTextColumn Header="Dimension Data (JSON)" Binding="{Binding DimensionDataJson}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+        </TabControl>
+
+        <!-- DB 연결 상태 -->
+        <GroupBox Grid.Row="3" Header="DB 연결" Margin="10,5">
+            <StackPanel Orientation="Horizontal">
+                <Ellipse x:Name="ConnectionIndicator" Width="12" Height="12" Fill="Gray" Margin="5"/>
+                <TextBlock x:Name="ConnectionStatusText" Text="연결 안됨" VerticalAlignment="Center" Margin="5,0"/>
+                <TextBlock Text=" | " VerticalAlignment="Center"/>
+                <TextBlock x:Name="TxtDbInfo" Text="Host: localhost | DB: Standard_Core" 
+                           VerticalAlignment="Center" Foreground="Gray"/>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- 상태 바 -->
+        <StatusBar Grid.Row="4">
+            <StatusBarItem>
+                <TextBlock x:Name="TxtStatus" Text="준비"/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>

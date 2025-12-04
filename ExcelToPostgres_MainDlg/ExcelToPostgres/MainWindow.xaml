@@ -1,0 +1,179 @@
+<Window x:Class="ExcelToPostgres.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ExcelToPostgres"
+        mc:Ignorable="d"
+        Title="Excel → PostgreSQL 데이터 관리" 
+        Height="750" Width="1200"
+        MinHeight="600" MinWidth="900"
+        WindowStartupLocation="CenterScreen"
+        Background="#ECEFF1">
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 헤더 -->
+        <Border Grid.Row="0" Background="#37474F" Padding="20,15">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="📊" FontSize="24" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock Text="Excel → PostgreSQL 데이터 관리" 
+                               FontSize="20" FontWeight="Bold" Foreground="White" 
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <TextBlock Text="DB 상태:" Foreground="#B0BEC5" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <Ellipse x:Name="ConnectionIndicator" Width="12" Height="12" Fill="#F44336" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="ConnectionStatusText" Text="연결 안됨" Foreground="#B0BEC5" 
+                               VerticalAlignment="Center" Margin="8,0,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 도구 모음 -->
+        <Border Grid.Row="1" Background="White" Padding="15,10" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- 파일 관련 버튼 -->
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="BtnOpenExcel" Content="📁 Excel 파일 열기" Click="BtnOpenExcel_Click"/>
+                    <TextBlock x:Name="TxtFileName" Text="파일을 선택하세요" 
+                               VerticalAlignment="Center" Foreground="#757575" Margin="10,0,0,0"/>
+                </StackPanel>
+
+                <!-- DB 관련 버튼 -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button x:Name="BtnDbSettings" Content="⚙️ DB 설정" Click="BtnDbSettings_Click"/>
+                    <Button x:Name="BtnTestConnection" Content="🔌 연결 테스트" Click="BtnTestConnection_Click"/>
+                    <Button x:Name="BtnCreateTables" Content="🗃️ 테이블 생성" Click="BtnCreateTables_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 메인 콘텐츠 (탭) -->
+        <TabControl x:Name="MainTabControl" Grid.Row="2" Margin="15">
+            <!-- MainCategory 탭 -->
+            <TabItem Header="MainCategory (대분류)">
+                <DataGrid x:Name="GridMainCategory" Margin="5">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="코드" Binding="{Binding MainCatCode}" Width="120"/>
+                        <DataGridTextColumn Header="이름(EN)" Binding="{Binding MainCatName}" Width="150"/>
+                        <DataGridTextColumn Header="이름(KR)" Binding="{Binding MainCatNameKr}" Width="120"/>
+                        <DataGridCheckBoxColumn Header="표준" Binding="{Binding IsStandard}" Width="60"/>
+                        <DataGridTextColumn Header="색상코드" Binding="{Binding ColorCode}" Width="100"/>
+                        <DataGridTextColumn Header="정렬순서" Binding="{Binding SortOrder}" Width="80"/>
+                        <DataGridCheckBoxColumn Header="활성" Binding="{Binding IsActive}" Width="60"/>
+                        <DataGridTextColumn Header="설명" Binding="{Binding Description}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <!-- SubCategory 탭 -->
+            <TabItem Header="SubCategory (중분류)">
+                <DataGrid x:Name="GridSubCategory" Margin="5">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="코드" Binding="{Binding SubCatCode}" Width="120"/>
+                        <DataGridTextColumn Header="이름(EN)" Binding="{Binding SubCatName}" Width="120"/>
+                        <DataGridTextColumn Header="이름(KR)" Binding="{Binding SubCatNameKr}" Width="100"/>
+                        <DataGridTextColumn Header="상위분류" Binding="{Binding MainCatCode}" Width="100"/>
+                        <DataGridCheckBoxColumn Header="벤더" Binding="{Binding IsVendor}" Width="60"/>
+                        <DataGridTextColumn Header="벤더코드" Binding="{Binding VendorCode}" Width="80"/>
+                        <DataGridTextColumn Header="국가" Binding="{Binding Country}" Width="80"/>
+                        <DataGridTextColumn Header="정렬" Binding="{Binding SortOrder}" Width="60"/>
+                        <DataGridCheckBoxColumn Header="활성" Binding="{Binding IsActive}" Width="60"/>
+                        <DataGridTextColumn Header="설명" Binding="{Binding Description}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <!-- MidCategory 탭 -->
+            <TabItem Header="MidCategory (소분류)">
+                <DataGrid x:Name="GridMidCategory" Margin="5">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="코드" Binding="{Binding MidCatCode}" Width="120"/>
+                        <DataGridTextColumn Header="이름(EN)" Binding="{Binding MidCatName}" Width="150"/>
+                        <DataGridTextColumn Header="이름(KR)" Binding="{Binding MidCatNameKr}" Width="120"/>
+                        <DataGridTextColumn Header="상위분류" Binding="{Binding SubCatCode}" Width="120"/>
+                        <DataGridTextColumn Header="정렬순서" Binding="{Binding SortOrder}" Width="80"/>
+                        <DataGridCheckBoxColumn Header="활성" Binding="{Binding IsActive}" Width="60"/>
+                        <DataGridTextColumn Header="설명" Binding="{Binding Description}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <!-- PartType 탭 -->
+            <TabItem Header="PartType (부품타입)">
+                <DataGrid x:Name="GridPartType" Margin="5">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="코드" Binding="{Binding PartTypeCode}" Width="120"/>
+                        <DataGridTextColumn Header="이름(EN)" Binding="{Binding PartTypeName}" Width="180"/>
+                        <DataGridTextColumn Header="이름(KR)" Binding="{Binding PartTypeNameKr}" Width="120"/>
+                        <DataGridTextColumn Header="Sub분류" Binding="{Binding SubCatCode}" Width="100"/>
+                        <DataGridTextColumn Header="Mid분류" Binding="{Binding MidCatCode}" Width="100"/>
+                        <DataGridTextColumn Header="벤더" Binding="{Binding VendorCode}" Width="80"/>
+                        <DataGridCheckBoxColumn Header="시리즈" Binding="{Binding HasSeries}" Width="60"/>
+                        <DataGridTextColumn Header="정렬" Binding="{Binding SortOrder}" Width="60"/>
+                        <DataGridCheckBoxColumn Header="활성" Binding="{Binding IsActive}" Width="60"/>
+                        <DataGridTextColumn Header="설명" Binding="{Binding Description}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <!-- PartSeries 탭 -->
+            <TabItem Header="PartSeries (시리즈)">
+                <DataGrid x:Name="GridPartSeries" Margin="5">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="코드" Binding="{Binding SeriesCode}" Width="120"/>
+                        <DataGridTextColumn Header="이름(EN)" Binding="{Binding SeriesName}" Width="120"/>
+                        <DataGridTextColumn Header="이름(KR)" Binding="{Binding SeriesNameKr}" Width="100"/>
+                        <DataGridTextColumn Header="부품타입" Binding="{Binding PartTypeCode}" Width="120"/>
+                        <DataGridTextColumn Header="벤더" Binding="{Binding VendorCode}" Width="80"/>
+                        <DataGridTextColumn Header="모델접두사" Binding="{Binding ModelPrefix}" Width="100"/>
+                        <DataGridTextColumn Header="정렬" Binding="{Binding SortOrder}" Width="60"/>
+                        <DataGridCheckBoxColumn Header="활성" Binding="{Binding IsActive}" Width="60"/>
+                        <DataGridTextColumn Header="설명" Binding="{Binding Description}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+        </TabControl>
+
+        <!-- 하단 상태바 및 저장 버튼 -->
+        <Border Grid.Row="3" Background="White" Padding="15,10" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="TxtStatus" Text="준비됨" Foreground="#757575" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="TxtRowCount" Text="" Foreground="#9E9E9E" VerticalAlignment="Center" Margin="20,0,0,0"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button x:Name="BtnReload" Content="🔄 다시 로드" Click="BtnReload_Click" IsEnabled="False"/>
+                    <Button x:Name="BtnSaveToDb" Content="💾 DB에 저장" Click="BtnSaveToDb_Click" 
+                            Style="{StaticResource SaveButton}" IsEnabled="False"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
