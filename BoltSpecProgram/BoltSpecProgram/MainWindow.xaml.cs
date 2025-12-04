@@ -639,9 +639,18 @@ namespace BoltSpecProgram
             }
             
             var selectedCategory = _uiManager?.SelectedCategory;
+            var selectedClassification = _uiManager?.SelectedClassification;  // ✅ 분류 가져오기
+            
             if (string.IsNullOrWhiteSpace(selectedCategory))
             {
                 MessageBox.Show("저장할 종류를 선택해주세요.",
+                    "선택 필요", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            
+            if (string.IsNullOrWhiteSpace(selectedClassification))
+            {
+                MessageBox.Show("분류가 선택되지 않았습니다.",
                     "선택 필요", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -667,9 +676,10 @@ namespace BoltSpecProgram
                 cmdCode = selectedCategory.Replace(" ", "_").ToUpper();
             }
             
-            // ✅ 확인 대화상자
+            // ✅ 확인 대화상자 (분류 정보 추가)
             var confirmResult = MessageBox.Show(
                 $"다음 데이터를 PostgreSQL DB에 저장하시겠습니까?\n\n" +
+                $"Part Type (분류): {selectedClassification}\n" +
                 $"Part Code: {cmdCode}\n" +
                 $"Part Name: {selectedCategory}\n" +
                 $"Database: Standard_Spec\n" +
@@ -715,14 +725,15 @@ namespace BoltSpecProgram
                     return;
                 }
                 
-                // 저장 실행
-                bool success = await dbService.SavePartSpecAsync(cmdCode, selectedCategory, jsonData);
+                // ✅ 저장 실행 (part_type 추가)
+                bool success = await dbService.SavePartSpecAsync(selectedClassification, cmdCode, selectedCategory, jsonData);
                 
                 if (success)
                 {
-                    StatusTextBlock.Text = $"DB 저장 완료: {cmdCode} ({selectedCategory})";
+                    StatusTextBlock.Text = $"DB 저장 완료: [{selectedClassification}] {cmdCode} ({selectedCategory})";
                     MessageBox.Show(
                         $"데이터가 성공적으로 저장되었습니다.\n\n" +
+                        $"Part Type: {selectedClassification}\n" +
                         $"Part Code: {cmdCode}\n" +
                         $"Part Name: {selectedCategory}",
                         "저장 완료",
@@ -875,8 +886,8 @@ namespace BoltSpecProgram
                             continue;
                         }
                         
-                        // DB 저장
-                        bool success = await dbService.SavePartSpecAsync(cmdCode, category, jsonData);
+                        // ✅ DB 저장 (part_type = classification 추가)
+                        bool success = await dbService.SavePartSpecAsync(classification, cmdCode, category, jsonData);
                         
                         if (success)
                         {
