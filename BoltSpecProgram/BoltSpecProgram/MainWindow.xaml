@@ -45,6 +45,8 @@
                 <MenuItem Header="설정 불러오기" Click="Load_Click"/>
                 <Separator/>
                 <MenuItem Header="JSON으로 내보내기" Click="ExportToJson_Click"/>
+                <MenuItem Header="DB에 저장 (현재 선택)" Click="SaveToDatabase_Click"/>
+                <MenuItem Header="전체 DB 저장 (자동)" Click="SaveAllToDatabase_Click"/>
                 <Separator/>
                 <MenuItem Header="종료" Click="Exit_Click"/>
             </MenuItem>

@@ -24,7 +24,7 @@ namespace BoltSpecProgram
         private string _currentFilePath;
         private bool _isControlMoveMode = false;
         private FrameworkElement _selectedControlForMove = null;
-        private const string DEFAULT_EXCEL_PATH = "SampleData_01.xlsx"; // 기본 엑셀 파일 경로
+        private const string DEFAULT_EXCEL_PATH = "SampleData_02.xlsx"; // 기본 엑셀 파일 경로
         private const string SETTINGS_FILE = "BoltSpecSettings.json"; // 설정 파일 경로
 
         // 윈도우 스케일링 관련
@@ -577,9 +577,10 @@ namespace BoltSpecProgram
                 return;
             }
 
-            // ✅ 현재 선택된 종류의 필터링된 데이터 가져오기
+            // ✅ 현재 선택된 종류의 필터링된 데이터 사용
             var exportData = _uiManager?.FilteredData ?? _data;
             var selectedCategory = _uiManager?.SelectedCategory ?? "BoltSpec";
+            var selectedClassification = _uiManager?.SelectedClassification ?? "";
             
             // 저장 파일 대화상자
             var saveFileDialog = new SaveFileDialog
@@ -593,7 +594,7 @@ namespace BoltSpecProgram
             {
                 try
                 {
-                    // ✅ 필터링된 데이터로 JSON 내보내기
+                    // ✅ 필터링된 데이터로 JSON 내보내기 (분류 + CMD 포함)
                     var exporter = new JsonExporter(exportData);
                     exporter.Export(saveFileDialog.FileName);
 
@@ -602,6 +603,7 @@ namespace BoltSpecProgram
                     // 결과 확인 대화상자
                     var result = MessageBox.Show(
                         $"JSON 파일이 저장되었습니다.\n\n" +
+                        $"분류: {selectedClassification}\n" +
                         $"종류: {selectedCategory}\n" +
                         $"데이터 행 수: {exportData.DataRows.Count}개\n" +
                         $"파일: {saveFileDialog.FileName}\n\n" +
@@ -621,6 +623,307 @@ namespace BoltSpecProgram
                     MessageBox.Show($"JSON 내보내기 중 오류 발생:\n{ex.Message}",
                         "오류", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
+            }
+        }
+        
+        /// <summary>
+        /// 현재 선택된 종류의 데이터를 PostgreSQL DB에 저장
+        /// </summary>
+        private async void SaveToDatabase_Click(object sender, RoutedEventArgs e)
+        {
+            if (_data == null || _data.DataRows.Count == 0)
+            {
+                MessageBox.Show("저장할 데이터가 없습니다.\n먼저 Excel 파일을 열어주세요.",
+                    "데이터 없음", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            
+            var selectedCategory = _uiManager?.SelectedCategory;
+            if (string.IsNullOrWhiteSpace(selectedCategory))
+            {
+                MessageBox.Show("저장할 종류를 선택해주세요.",
+                    "선택 필요", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            
+            // ✅ CMD 코드 가져오기
+            var exporter = new JsonExporter(_data);
+            var cmdCode = exporter.GetCMDCodeForCategory(selectedCategory);
+            
+            if (string.IsNullOrWhiteSpace(cmdCode))
+            {
+                var result = MessageBox.Show(
+                    $"'{selectedCategory}'에 대한 CMD 코드가 없습니다.\n" +
+                    $"Name_Code 시트에 매핑을 추가해주세요.\n\n" +
+                    $"종류 이름을 part_code로 사용하여 저장하시겠습니까?",
+                    "CMD 코드 없음",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+                    
+                if (result != MessageBoxResult.Yes)
+                    return;
+                    
+                // 종류 이름을 코드로 사용
+                cmdCode = selectedCategory.Replace(" ", "_").ToUpper();
+            }
+            
+            // ✅ 확인 대화상자
+            var confirmResult = MessageBox.Show(
+                $"다음 데이터를 PostgreSQL DB에 저장하시겠습니까?\n\n" +
+                $"Part Code: {cmdCode}\n" +
+                $"Part Name: {selectedCategory}\n" +
+                $"Database: Standard_Spec\n" +
+                $"Table: PartSpec",
+                "DB 저장 확인",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+                
+            if (confirmResult != MessageBoxResult.Yes)
+                return;
+            
+            try
+            {
+                StatusTextBlock.Text = "DB 저장 중...";
+                
+                // ✅ JSON 데이터 생성 (해당 종류만)
+                var jsonData = exporter.ExportSeriesToString(selectedCategory);
+                
+                if (string.IsNullOrWhiteSpace(jsonData))
+                {
+                    MessageBox.Show("JSON 데이터 생성에 실패했습니다.",
+                        "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+                
+                // ✅ DB 저장
+                var dbService = new DatabaseService();
+                
+                // 연결 테스트
+                bool isConnected = await dbService.TestConnectionAsync();
+                if (!isConnected)
+                {
+                    MessageBox.Show(
+                        "PostgreSQL 서버에 연결할 수 없습니다.\n\n" +
+                        "연결 설정을 확인해주세요:\n" +
+                        "- Host: localhost\n" +
+                        "- Port: 5432\n" +
+                        "- Database: Standard_Spec",
+                        "연결 실패",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                    StatusTextBlock.Text = "DB 연결 실패";
+                    return;
+                }
+                
+                // 저장 실행
+                bool success = await dbService.SavePartSpecAsync(cmdCode, selectedCategory, jsonData);
+                
+                if (success)
+                {
+                    StatusTextBlock.Text = $"DB 저장 완료: {cmdCode} ({selectedCategory})";
+                    MessageBox.Show(
+                        $"데이터가 성공적으로 저장되었습니다.\n\n" +
+                        $"Part Code: {cmdCode}\n" +
+                        $"Part Name: {selectedCategory}",
+                        "저장 완료",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+                else
+                {
+                    StatusTextBlock.Text = "DB 저장 실패";
+                    MessageBox.Show("데이터 저장에 실패했습니다.",
+                        "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusTextBlock.Text = "DB 저장 오류";
+                MessageBox.Show($"DB 저장 중 오류 발생:\n{ex.Message}",
+                    "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        
+        /// <summary>
+        /// 모든 분류/종류를 순차적으로 자동 DB 저장
+        /// </summary>
+        private async void SaveAllToDatabase_Click(object sender, RoutedEventArgs e)
+        {
+            if (_data == null || _data.DataRows.Count == 0)
+            {
+                MessageBox.Show("저장할 데이터가 없습니다.\n먼저 Excel 파일을 열어주세요.",
+                    "데이터 없음", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            
+            if (_uiManager == null)
+            {
+                MessageBox.Show("UI Manager가 초기화되지 않았습니다.",
+                    "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+            
+            // ✅ 전체 분류/종류 목록 수집
+            var allClassifications = _uiManager.AllClassifications;
+            if (allClassifications == null || allClassifications.Count == 0)
+            {
+                MessageBox.Show("분류 데이터가 없습니다.",
+                    "데이터 없음", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            
+            // 전체 종류 수 계산
+            int totalCategories = 0;
+            var categoryList = new List<(string classification, string category)>();
+            
+            foreach (var classification in allClassifications)
+            {
+                var categories = _uiManager.GetCategoriesForClassification(classification);
+                foreach (var category in categories)
+                {
+                    categoryList.Add((classification, category));
+                    totalCategories++;
+                }
+            }
+            
+            if (totalCategories == 0)
+            {
+                MessageBox.Show("저장할 종류가 없습니다.",
+                    "데이터 없음", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            
+            // ✅ 확인 대화상자
+            var confirmResult = MessageBox.Show(
+                $"전체 데이터를 DB에 저장하시겠습니까?\n\n" +
+                $"분류 수: {allClassifications.Count}개\n" +
+                $"종류 수: {totalCategories}개\n\n" +
+                $"Database: Standard_Spec\n" +
+                $"Table: PartSpec\n\n" +
+                $"저장을 시작하면 기존 데이터가 업데이트됩니다.",
+                "전체 DB 저장 확인",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+                
+            if (confirmResult != MessageBoxResult.Yes)
+                return;
+            
+            try
+            {
+                // ✅ DB 서비스 초기화 및 연결 테스트
+                var dbService = new DatabaseService();
+                
+                StatusTextBlock.Text = "DB 연결 확인 중...";
+                bool isConnected = await dbService.TestConnectionAsync();
+                
+                if (!isConnected)
+                {
+                    MessageBox.Show(
+                        "PostgreSQL 서버에 연결할 수 없습니다.\n\n" +
+                        "연결 설정을 확인해주세요:\n" +
+                        "- Host: localhost\n" +
+                        "- Port: 5432\n" +
+                        "- Database: Standard_Spec",
+                        "연결 실패",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                    StatusTextBlock.Text = "DB 연결 실패";
+                    return;
+                }
+                
+                // ✅ 테이블 확인/생성
+                await dbService.EnsureTableExistsAsync();
+                
+                // ✅ 전체 데이터로 JsonExporter 생성
+                var exporter = new JsonExporter(_data);
+                
+                // ✅ 저장 결과 추적
+                int successCount = 0;
+                int failCount = 0;
+                int skipCount = 0;
+                var failedItems = new List<string>();
+                
+                // ✅ 순차 저장 시작
+                for (int i = 0; i < categoryList.Count; i++)
+                {
+                    var (classification, category) = categoryList[i];
+                    
+                    // 진행 상황 표시
+                    StatusTextBlock.Text = $"저장 중... [{i + 1}/{totalCategories}] {classification} > {category}";
+                    
+                    // UI 업데이트를 위해 Dispatcher 처리
+                    await System.Threading.Tasks.Task.Run(() => { });
+                    Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+                    
+                    try
+                    {
+                        // CMD 코드 가져오기
+                        var cmdCode = exporter.GetCMDCodeForCategory(category);
+                        
+                        if (string.IsNullOrWhiteSpace(cmdCode))
+                        {
+                            // CMD 코드가 없으면 종류 이름으로 대체
+                            cmdCode = category.Replace(" ", "_").ToUpper();
+                        }
+                        
+                        // JSON 데이터 생성
+                        var jsonData = exporter.ExportSeriesToString(category);
+                        
+                        if (string.IsNullOrWhiteSpace(jsonData))
+                        {
+                            skipCount++;
+                            continue;
+                        }
+                        
+                        // DB 저장
+                        bool success = await dbService.SavePartSpecAsync(cmdCode, category, jsonData);
+                        
+                        if (success)
+                        {
+                            successCount++;
+                        }
+                        else
+                        {
+                            failCount++;
+                            failedItems.Add($"{category} ({cmdCode})");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        failCount++;
+                        failedItems.Add($"{category}: {ex.Message}");
+                    }
+                }
+                
+                // ✅ 결과 표시
+                StatusTextBlock.Text = $"전체 DB 저장 완료: 성공 {successCount}, 실패 {failCount}, 건너뜀 {skipCount}";
+                
+                string resultMessage = $"전체 DB 저장이 완료되었습니다.\n\n" +
+                    $"✅ 성공: {successCount}개\n" +
+                    $"❌ 실패: {failCount}개\n" +
+                    $"⏭️ 건너뜀: {skipCount}개\n" +
+                    $"━━━━━━━━━━━━━━━━\n" +
+                    $"총 처리: {totalCategories}개";
+                
+                if (failedItems.Count > 0)
+                {
+                    resultMessage += "\n\n실패 항목:\n" + string.Join("\n", failedItems.Take(10));
+                    if (failedItems.Count > 10)
+                    {
+                        resultMessage += $"\n... 외 {failedItems.Count - 10}개";
+                    }
+                }
+                
+                MessageBox.Show(resultMessage,
+                    "전체 DB 저장 결과",
+                    MessageBoxButton.OK,
+                    failCount > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                StatusTextBlock.Text = "전체 DB 저장 오류";
+                MessageBox.Show($"전체 DB 저장 중 오류 발생:\n{ex.Message}",
+                    "오류", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

@@ -11,6 +11,27 @@ namespace BoltSpecProgram
     {
         public List<string> Headers { get; set; } = new List<string>();
         public List<BoltDataRow> DataRows { get; set; } = new List<BoltDataRow>();
+        
+        /// <summary>
+        /// Name_Code 매핑 (종류 이름 -> CMD 코드)
+        /// 예: "육각머리볼트" -> "HBOLT"
+        /// </summary>
+        public Dictionary<string, NameCodeInfo> NameCodeMap { get; set; } = new Dictionary<string, NameCodeInfo>();
+    }
+    
+    /// <summary>
+    /// Name_Code 정보
+    /// </summary>
+    public class NameCodeInfo
+    {
+        /// <summary>코드 (예: HBOLT)</summary>
+        public string Code { get; set; }
+        
+        /// <summary>이름 (예: 육각머리볼트)</summary>
+        public string Name { get; set; }
+        
+        /// <summary>영문 이름 (예: Hexa Head Bolt)</summary>
+        public string EnglishName { get; set; }
     }
 
     /// <summary>

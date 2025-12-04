@@ -9,16 +9,32 @@ namespace BoltSpecProgram.Services
 {
     /// <summary>
     /// Excel 데이터를 계층 구조 JSON으로 변환하여 저장하는 클래스
+    /// 분류(Classification)를 최상위로, 종류(Series)에 CMD 코드 포함
     /// </summary>
     public class JsonExporter
     {
         #region JSON 구조 클래스
 
         /// <summary>
-        /// 최상위 JSON 구조
+        /// 최상위 JSON 구조 - 분류(Classification) 포함
         /// </summary>
         public class RootData
         {
+            [JsonProperty("Classification")]
+            public List<ClassificationItem> Classification { get; set; } = new List<ClassificationItem>();
+        }
+        
+        /// <summary>
+        /// 분류 항목 (예: 볼트류, 너트류, 와셔류)
+        /// </summary>
+        public class ClassificationItem
+        {
+            [JsonProperty("name")]
+            public string Name { get; set; }
+            
+            [JsonProperty("id")]
+            public int Id { get; set; }
+            
             [JsonProperty("Series")]
             public List<SeriesItem> Series { get; set; } = new List<SeriesItem>();
         }
@@ -30,6 +46,9 @@ namespace BoltSpecProgram.Services
         {
             [JsonProperty("name")]
             public string Name { get; set; }
+            
+            [JsonProperty("CMD")]
+            public string CMD { get; set; }
 
             [JsonProperty("id")]
             public int Id { get; set; }
@@ -99,6 +118,11 @@ namespace BoltSpecProgram.Services
         private readonly BoltSpecData _data;
         private readonly List<int> _hierarchyColumns;  // 계층 컬럼 인덱스 (2~8)
         private readonly List<int> _leafColumns;       // 리프 컬럼 인덱스 (9+)
+        
+        // ✅ 분류 컬럼 인덱스 (0)
+        private readonly int _classificationColumnIndex = 0;
+        // ✅ 종류 컬럼 인덱스 (1)
+        private readonly int _categoryColumnIndex = 1;
 
         /// <summary>
         /// 생성자
@@ -162,19 +186,172 @@ namespace BoltSpecProgram.Services
 
             return JsonConvert.SerializeObject(rootData, settings);
         }
+        
+        /// <summary>
+        /// 특정 종류(Series)만 JSON 문자열로 반환 (DB 저장용)
+        /// </summary>
+        public string ExportSeriesToString(string categoryName)
+        {
+            var rootData = BuildJsonStructure();
+            
+            // 해당 종류만 찾기
+            SeriesItem targetSeries = null;
+            foreach (var classification in rootData.Classification)
+            {
+                var series = classification.Series.FirstOrDefault(s => s.Name == categoryName);
+                if (series != null)
+                {
+                    targetSeries = series;
+                    break;
+                }
+            }
+            
+            if (targetSeries == null)
+            {
+                // 전체 중 첫 번째 Series 반환
+                if (rootData.Classification.Count > 0 && rootData.Classification[0].Series.Count > 0)
+                {
+                    targetSeries = rootData.Classification[0].Series[0];
+                }
+            }
+            
+            if (targetSeries == null)
+                return null;
+            
+            // 단일 Series를 포함하는 구조 생성
+            var singleSeriesData = new
+            {
+                Series = new List<SeriesItem> { targetSeries }
+            };
+            
+            var settings = new JsonSerializerSettings
+            {
+                Formatting = Formatting.Indented,
+                NullValueHandling = NullValueHandling.Ignore
+            };
+
+            return JsonConvert.SerializeObject(singleSeriesData, settings);
+        }
+        
+        /// <summary>
+        /// 특정 종류의 CMD 코드 반환
+        /// </summary>
+        public string GetCMDCodeForCategory(string categoryName)
+        {
+            return GetCMDCode(categoryName);
+        }
 
         /// <summary>
-        /// JSON 구조 생성
+        /// JSON 구조 생성 - 분류(Classification)를 최상위로
         /// </summary>
         private RootData BuildJsonStructure()
         {
             var rootData = new RootData();
+            
+            // ✅ 분류(Classification) 수집
+            var classifications = GetAllClassifications();
+            int classificationId = 1;
+            
+            foreach (var classificationName in classifications)
+            {
+                var classification = new ClassificationItem
+                {
+                    Name = classificationName,
+                    Id = classificationId++
+                };
+                
+                // ✅ 해당 분류에 속하는 종류(Series) 수집
+                var categories = GetCategoriesByClassification(classificationName);
+                int seriesId = 1;
+                
+                foreach (var categoryName in categories)
+                {
+                    var series = BuildSeriesItem(categoryName, seriesId++);
+                    if (series != null)
+                    {
+                        classification.Series.Add(series);
+                    }
+                }
+                
+                rootData.Classification.Add(classification);
+            }
 
-            // 시리즈 생성 (종류 - Headers[1])
+            return rootData;
+        }
+        
+        /// <summary>
+        /// 모든 분류(Classification) 목록 수집
+        /// </summary>
+        private List<string> GetAllClassifications()
+        {
+            var classifications = new HashSet<string>();
+            
+            if (_data.Headers.Count <= _classificationColumnIndex)
+                return new List<string> { "Unknown" };
+                
+            string columnName = _data.Headers[_classificationColumnIndex];
+            
+            foreach (var row in _data.DataRows)
+            {
+                if (row.CompleteValues.ContainsKey(columnName))
+                {
+                    var value = row.CompleteValues[columnName]?.Trim();
+                    if (!string.IsNullOrWhiteSpace(value))
+                    {
+                        classifications.Add(value);
+                    }
+                }
+            }
+            
+            return classifications.OrderBy(c => c).ToList();
+        }
+        
+        /// <summary>
+        /// 특정 분류에 속하는 종류(Category) 목록 수집
+        /// </summary>
+        private List<string> GetCategoriesByClassification(string classificationName)
+        {
+            var categories = new HashSet<string>();
+            
+            if (_data.Headers.Count <= _categoryColumnIndex)
+                return categories.ToList();
+                
+            string classColumnName = _data.Headers[_classificationColumnIndex];
+            string catColumnName = _data.Headers[_categoryColumnIndex];
+            
+            foreach (var row in _data.DataRows)
+            {
+                if (row.CompleteValues.ContainsKey(classColumnName) &&
+                    row.CompleteValues.ContainsKey(catColumnName))
+                {
+                    var classValue = row.CompleteValues[classColumnName]?.Trim();
+                    var catValue = row.CompleteValues[catColumnName]?.Trim();
+                    
+                    if (classValue == classificationName && !string.IsNullOrWhiteSpace(catValue))
+                    {
+                        categories.Add(catValue);
+                    }
+                }
+            }
+            
+            return categories.OrderBy(c => c).ToList();
+        }
+        
+        /// <summary>
+        /// 종류(Series) 항목 생성
+        /// </summary>
+        private SeriesItem BuildSeriesItem(string categoryName, int seriesId)
+        {
+            // ✅ 해당 종류에 속하는 데이터만 필터링
+            var filteredData = FilterDataByCategory(categoryName);
+            if (filteredData.DataRows.Count == 0)
+                return null;
+            
             var series = new SeriesItem
             {
-                Id = 1,
-                Name = GetSeriesName()
+                Id = seriesId,
+                Name = categoryName,
+                CMD = GetCMDCode(categoryName)  // ✅ Name_Code에서 CMD 가져오기
             };
 
             // 옵션 ID 매핑 (컬럼 인덱스 → 옵션 ID)
@@ -184,7 +361,7 @@ namespace BoltSpecProgram.Services
             // 계층 컬럼들에 대한 옵션 생성
             foreach (var colIndex in _hierarchyColumns)
             {
-                var option = BuildHierarchyOption(colIndex, optionId, columnToOptionId);
+                var option = BuildHierarchyOption(filteredData, colIndex, optionId, columnToOptionId);
                 if (option != null && option.Values.Count > 0)
                 {
                     series.Options.Add(option);
@@ -196,7 +373,7 @@ namespace BoltSpecProgram.Services
             // 리프 컬럼들에 대한 옵션 생성
             foreach (var colIndex in _leafColumns)
             {
-                var option = BuildLeafOption(colIndex, optionId, columnToOptionId);
+                var option = BuildLeafOption(filteredData, colIndex, optionId, columnToOptionId);
                 if (option != null && option.Values.Count > 0)
                 {
                     series.Options.Add(option);
@@ -205,32 +382,58 @@ namespace BoltSpecProgram.Services
                 }
             }
 
-            rootData.Series.Add(series);
-            return rootData;
+            return series;
         }
-
+        
         /// <summary>
-        /// 시리즈 이름 추출 (종류)
+        /// 종류 이름에서 CMD 코드 가져오기
         /// </summary>
-        private string GetSeriesName()
+        private string GetCMDCode(string categoryName)
         {
-            if (_data.Headers.Count > 1 && _data.DataRows.Count > 0)
+            if (_data.NameCodeMap != null && _data.NameCodeMap.ContainsKey(categoryName))
             {
-                var categoryColumn = _data.Headers[1];
-                if (_data.DataRows[0].CompleteValues.ContainsKey(categoryColumn))
+                return _data.NameCodeMap[categoryName].Code;
+            }
+            return "";  // 매핑이 없으면 빈 문자열
+        }
+        
+        /// <summary>
+        /// 종류별로 데이터 필터링
+        /// </summary>
+        private BoltSpecData FilterDataByCategory(string categoryName)
+        {
+            var filtered = new BoltSpecData
+            {
+                Headers = _data.Headers,
+                NameCodeMap = _data.NameCodeMap
+            };
+            
+            if (_data.Headers.Count <= _categoryColumnIndex)
+                return filtered;
+                
+            string catColumnName = _data.Headers[_categoryColumnIndex];
+            
+            foreach (var row in _data.DataRows)
+            {
+                if (row.CompleteValues.ContainsKey(catColumnName))
                 {
-                    return _data.DataRows[0].CompleteValues[categoryColumn];
+                    var value = row.CompleteValues[catColumnName]?.Trim();
+                    if (value == categoryName)
+                    {
+                        filtered.DataRows.Add(row);
+                    }
                 }
             }
-            return "Unknown";
+            
+            return filtered;
         }
 
         /// <summary>
         /// 계층 옵션 생성
         /// </summary>
-        private OptionItem BuildHierarchyOption(int colIndex, int optionId, Dictionary<int, int> columnToOptionId)
+        private OptionItem BuildHierarchyOption(BoltSpecData data, int colIndex, int optionId, Dictionary<int, int> columnToOptionId)
         {
-            string columnName = _data.Headers[colIndex];
+            string columnName = data.Headers[colIndex];
             
             var option = new OptionItem
             {
@@ -241,7 +444,7 @@ namespace BoltSpecProgram.Services
             };
 
             // 이 컬럼의 모든 고유값과 부모 관계 수집
-            var valueRelations = CollectValueRelations(colIndex);
+            var valueRelations = CollectValueRelations(data, colIndex);
 
             // 부모 옵션 ID 결정
             int parentColIndex = GetParentColumnIndex(colIndex);
@@ -253,7 +456,7 @@ namespace BoltSpecProgram.Services
             var parentValueToEnumId = new Dictionary<string, int>();
             if (parentColIndex >= 0)
             {
-                var parentValues = CollectUniqueValues(parentColIndex);
+                var parentValues = CollectUniqueValues(data, parentColIndex);
                 int enumId = 0;
                 foreach (var val in parentValues)
                 {
@@ -311,12 +514,12 @@ namespace BoltSpecProgram.Services
         /// <summary>
         /// 리프 옵션 생성
         /// </summary>
-        private OptionItem BuildLeafOption(int colIndex, int optionId, Dictionary<int, int> columnToOptionId)
+        private OptionItem BuildLeafOption(BoltSpecData data, int colIndex, int optionId, Dictionary<int, int> columnToOptionId)
         {
-            string columnName = _data.Headers[colIndex];
+            string columnName = data.Headers[colIndex];
             
             // 특수 값 확인 (E: EditBox, C: CheckBox, X: 제외)
-            var firstValue = GetFirstNonEmptyValue(colIndex);
+            var firstValue = GetFirstNonEmptyValue(data, colIndex);
             string controlType = DetermineControlType(firstValue);
             
             if (controlType == "EXCLUDE")
@@ -337,7 +540,7 @@ namespace BoltSpecProgram.Services
                 : "-1";
 
             // 고유 값 수집
-            var uniqueValues = CollectUniqueValues(colIndex);
+            var uniqueValues = CollectUniqueValues(data, colIndex);
 
             int valueEnumId = 0;
             foreach (var value in uniqueValues)
@@ -364,15 +567,15 @@ namespace BoltSpecProgram.Services
         /// <summary>
         /// 컬럼의 값과 부모 관계 수집
         /// </summary>
-        private List<ValueRelation> CollectValueRelations(int colIndex)
+        private List<ValueRelation> CollectValueRelations(BoltSpecData data, int colIndex)
         {
             var relations = new Dictionary<string, ValueRelation>();
-            string columnName = _data.Headers[colIndex];
+            string columnName = data.Headers[colIndex];
             
             int parentColIndex = GetParentColumnIndex(colIndex);
-            string parentColumnName = parentColIndex >= 0 ? _data.Headers[parentColIndex] : null;
+            string parentColumnName = parentColIndex >= 0 ? data.Headers[parentColIndex] : null;
 
-            foreach (var row in _data.DataRows)
+            foreach (var row in data.DataRows)
             {
                 if (!row.CompleteValues.ContainsKey(columnName))
                     continue;
@@ -426,12 +629,12 @@ namespace BoltSpecProgram.Services
         /// <summary>
         /// 컬럼의 고유 값 수집
         /// </summary>
-        private List<string> CollectUniqueValues(int colIndex)
+        private List<string> CollectUniqueValues(BoltSpecData data, int colIndex)
         {
             var uniqueValues = new HashSet<string>();
-            string columnName = _data.Headers[colIndex];
+            string columnName = data.Headers[colIndex];
 
-            foreach (var row in _data.DataRows)
+            foreach (var row in data.DataRows)
             {
                 if (!row.CompleteValues.ContainsKey(columnName))
                     continue;
@@ -469,11 +672,11 @@ namespace BoltSpecProgram.Services
         /// <summary>
         /// 컬럼의 첫 번째 비어있지 않은 값 반환
         /// </summary>
-        private string GetFirstNonEmptyValue(int colIndex)
+        private string GetFirstNonEmptyValue(BoltSpecData data, int colIndex)
         {
-            string columnName = _data.Headers[colIndex];
+            string columnName = data.Headers[colIndex];
 
-            foreach (var row in _data.DataRows)
+            foreach (var row in data.DataRows)
             {
                 if (row.CompleteValues.ContainsKey(columnName))
                 {

@@ -27,13 +27,20 @@ namespace BoltSpecProgram.UI
         private bool _isDragging = false;
         private Border _draggedBorder = null;
         
-        // ✅ 종류 콤보박스 관련
-        private string _categoryColumnName;           // 종류 컬럼 이름 (Headers[1])
-        private List<string> _allCategories;          // 모든 종류 목록
+        // ✅ 분류 콤보박스 관련 (Headers[0])
+        private string _classificationColumnName;    // 분류 컬럼 이름
+        private List<string> _allClassifications;    // 모든 분류 목록
+        private string _selectedClassification;      // 현재 선택된 분류
+        private ComboBox _classificationComboBox;    // 분류 콤보박스
+        
+        // ✅ 종류 콤보박스 관련 (Headers[1])
+        private string _categoryColumnName;           // 종류 컬럼 이름
+        private List<string> _allCategories;          // 모든 종류 목록 (현재 분류에 속한)
         private string _selectedCategory;             // 현재 선택된 종류
         private ComboBox _categoryComboBox;           // 종류 콤보박스
         private List<int> _hierarchyColumns;          // 계층 컬럼 인덱스
         private bool _isUpdatingCategory = false;     // 종류 변경 중 플래그
+        private bool _isUpdatingClassification = false; // 분류 변경 중 플래그
         
         // ✅ 컨트롤 위치 저장 (종류 변경 시에도 유지)
         private Dictionary<string, SavedControlPosition> _savedControlPositions = new Dictionary<string, SavedControlPosition>();
@@ -45,6 +52,11 @@ namespace BoltSpecProgram.UI
         private const double INITIAL_CANVAS2_HEIGHT = 600;
         
         // ✅ JSON 내보내기용 Public 속성
+        /// <summary>
+        /// 현재 선택된 분류 이름 (예: "볼트류", "너트류")
+        /// </summary>
+        public string SelectedClassification => _selectedClassification;
+        
         /// <summary>
         /// 현재 선택된 종류 이름 (예: "육각머리볼트", "T홈볼트")
         /// </summary>
@@ -59,6 +71,29 @@ namespace BoltSpecProgram.UI
         /// 종류 컬럼 이름 (Headers[1])
         /// </summary>
         public string CategoryColumnName => _categoryColumnName;
+        
+        /// <summary>
+        /// 분류 컬럼 이름 (Headers[0])
+        /// </summary>
+        public string ClassificationColumnName => _classificationColumnName;
+        
+        /// <summary>
+        /// 모든 분류 목록 (Public)
+        /// </summary>
+        public List<string> AllClassifications => _allClassifications ?? new List<string>();
+        
+        /// <summary>
+        /// 특정 분류에 속하는 종류 목록 반환 (Public)
+        /// </summary>
+        public List<string> GetCategoriesForClassification(string classification)
+        {
+            return GetCategoriesByClassification(classification);
+        }
+        
+        /// <summary>
+        /// 전체 데이터 (Public - 전체 DB 저장용)
+        /// </summary>
+        public BoltSpecData FullData => _data;
 
         public DynamicUIManager(MainWindow mainWindow)
         {
@@ -76,35 +111,110 @@ namespace BoltSpecProgram.UI
             _canvas1.Children.Clear();
             _canvas2.Children.Clear();
 
+            // ✅ 분류 컬럼 이름 저장 (Headers[0])
+            if (data.Headers.Count > 0 && !string.IsNullOrWhiteSpace(data.Headers[0]))
+            {
+                _classificationColumnName = data.Headers[0];
+                
+                // ✅ 모든 분류 목록 수집
+                _allClassifications = GetAllClassifications();
+            }
+            
             // ✅ 종류 컬럼 이름 저장 (Headers[1])
             if (data.Headers.Count > 1 && !string.IsNullOrWhiteSpace(data.Headers[1]))
             {
                 _categoryColumnName = data.Headers[1];
-                
-                // ✅ 모든 종류 목록 수집
+            }
+            
+            // ✅ 분류/종류 콤보박스 표시
+            DisplayClassificationAndCategoryComboBox();
+            
+            // ✅ 첫 번째 분류 선택 (종류는 분류 변경 이벤트에서 처리)
+            if (_allClassifications != null && _allClassifications.Count > 0 && _classificationComboBox != null)
+            {
+                _classificationComboBox.SelectedIndex = 0;
+                return; // SelectionChanged 이벤트에서 나머지 처리
+            }
+            
+            // ✅ 분류가 없는 경우 기존 방식으로 처리
+            if (_categoryColumnName != null)
+            {
                 _allCategories = GetAllCategories();
-                
-                // ✅ 종류 콤보박스 표시
-                DisplayCategoryComboBox();
-                
-                // ✅ 첫 번째 종류 선택 (UI 구성은 SelectionChanged에서 처리)
                 if (_allCategories.Count > 0 && _categoryComboBox != null)
                 {
                     _categoryComboBox.SelectedIndex = 0;
-                    return; // SelectionChanged 이벤트에서 나머지 UI 구성
+                    return;
                 }
             }
 
-            // ✅ 종류가 없는 경우 기존 방식으로 처리
+            // ✅ 분류/종류가 없는 경우 기존 방식으로 처리
             BuildUIForCurrentCategory();
         }
         
         /// <summary>
-        /// 모든 종류 목록을 가져옴
+        /// 모든 분류(Classification) 목록을 가져옴
+        /// </summary>
+        private List<string> GetAllClassifications()
+        {
+            var classifications = new HashSet<string>();
+            
+            if (string.IsNullOrWhiteSpace(_classificationColumnName))
+                return new List<string>();
+            
+            foreach (var row in _data.DataRows)
+            {
+                if (row.CompleteValues.ContainsKey(_classificationColumnName))
+                {
+                    var value = row.CompleteValues[_classificationColumnName]?.Trim();
+                    if (!string.IsNullOrWhiteSpace(value))
+                    {
+                        classifications.Add(value);
+                    }
+                }
+            }
+            
+            return classifications.OrderBy(c => c).ToList();
+        }
+        
+        /// <summary>
+        /// 현재 선택된 분류에 속하는 종류 목록을 가져옴
+        /// </summary>
+        private List<string> GetCategoriesByClassification(string classificationName)
+        {
+            var categories = new HashSet<string>();
+            
+            if (string.IsNullOrWhiteSpace(_categoryColumnName))
+                return new List<string>();
+            
+            foreach (var row in _data.DataRows)
+            {
+                // 분류가 일치하는 행만 확인
+                bool classificationMatch = string.IsNullOrWhiteSpace(_classificationColumnName) ||
+                    (row.CompleteValues.ContainsKey(_classificationColumnName) && 
+                     row.CompleteValues[_classificationColumnName]?.Trim() == classificationName);
+                
+                if (classificationMatch && row.CompleteValues.ContainsKey(_categoryColumnName))
+                {
+                    var value = row.CompleteValues[_categoryColumnName]?.Trim();
+                    if (!string.IsNullOrWhiteSpace(value))
+                    {
+                        categories.Add(value);
+                    }
+                }
+            }
+            
+            return categories.OrderBy(c => c).ToList();
+        }
+        
+        /// <summary>
+        /// 모든 종류 목록을 가져옴 (분류와 무관하게)
         /// </summary>
         private List<string> GetAllCategories()
         {
             var categories = new HashSet<string>();
+            
+            if (string.IsNullOrWhiteSpace(_categoryColumnName))
+                return new List<string>();
             
             foreach (var row in _data.DataRows)
             {
@@ -128,7 +238,8 @@ namespace BoltSpecProgram.UI
         {
             var filtered = new BoltSpecData
             {
-                Headers = _data.Headers
+                Headers = _data.Headers,
+                NameCodeMap = _data.NameCodeMap  // ✅ Name_Code 매핑도 복사
             };
             
             foreach (var row in _data.DataRows)
@@ -280,52 +391,122 @@ namespace BoltSpecProgram.UI
         }
         
         /// <summary>
-        /// 최상단에 "종류" 콤보박스 표시 (Headers[1])
+        /// 최상단에 "분류" 및 "종류" 콤보박스 표시
         /// </summary>
-        private void DisplayCategoryComboBox()
+        private void DisplayClassificationAndCategoryComboBox()
         {
             _mainWindow.CategoryPanel.Children.Clear();
             
-            // ✅ 레이블 생성
-            var categoryLabel = new Label
-            {
-                Content = $"{_categoryColumnName}:",
-                FontSize = 14,
-                FontWeight = FontWeights.Bold,
-                Foreground = new SolidColorBrush(Color.FromRgb(0, 102, 204)),
-                Padding = new Thickness(10, 5, 5, 5),
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            
-            // ✅ 콤보박스 생성
-            _categoryComboBox = new ComboBox
-            {
-                Width = 200,
-                Height = 28,
-                FontSize = 13,
-                Margin = new Thickness(5, 5, 10, 5),
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            
-            // ✅ 종류 목록 추가
-            foreach (var category in _allCategories)
-            {
-                _categoryComboBox.Items.Add(category);
-            }
-            
-            // ✅ 선택 변경 이벤트
-            _categoryComboBox.SelectionChanged += OnCategorySelectionChanged;
-            
-            // ✅ 패널에 추가
             var stackPanel = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
                 VerticalAlignment = VerticalAlignment.Center
             };
-            stackPanel.Children.Add(categoryLabel);
-            stackPanel.Children.Add(_categoryComboBox);
+            
+            // ✅ 분류 콤보박스 (Headers[0])
+            if (!string.IsNullOrWhiteSpace(_classificationColumnName) && 
+                _allClassifications != null && _allClassifications.Count > 0)
+            {
+                var classLabel = new Label
+                {
+                    Content = $"{_classificationColumnName}:",
+                    FontSize = 14,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = new SolidColorBrush(Color.FromRgb(0, 51, 102)),
+                    Padding = new Thickness(10, 5, 5, 5),
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                
+                _classificationComboBox = new ComboBox
+                {
+                    Width = 120,
+                    Height = 28,
+                    FontSize = 13,
+                    Margin = new Thickness(5, 5, 15, 5),
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                
+                foreach (var classification in _allClassifications)
+                {
+                    _classificationComboBox.Items.Add(classification);
+                }
+                
+                _classificationComboBox.SelectionChanged += OnClassificationSelectionChanged;
+                
+                stackPanel.Children.Add(classLabel);
+                stackPanel.Children.Add(_classificationComboBox);
+            }
+            
+            // ✅ 종류 콤보박스 (Headers[1])
+            if (!string.IsNullOrWhiteSpace(_categoryColumnName))
+            {
+                var categoryLabel = new Label
+                {
+                    Content = $"{_categoryColumnName}:",
+                    FontSize = 14,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = new SolidColorBrush(Color.FromRgb(0, 102, 204)),
+                    Padding = new Thickness(10, 5, 5, 5),
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                
+                _categoryComboBox = new ComboBox
+                {
+                    Width = 200,
+                    Height = 28,
+                    FontSize = 13,
+                    Margin = new Thickness(5, 5, 10, 5),
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                
+                // 종류 목록은 분류 선택 후 채워짐
+                _categoryComboBox.SelectionChanged += OnCategorySelectionChanged;
+                
+                stackPanel.Children.Add(categoryLabel);
+                stackPanel.Children.Add(_categoryComboBox);
+            }
             
             _mainWindow.CategoryPanel.Children.Add(stackPanel);
+        }
+        
+        /// <summary>
+        /// 분류 콤보박스 선택 변경 이벤트
+        /// </summary>
+        private void OnClassificationSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isUpdatingClassification) return;
+            
+            var comboBox = sender as ComboBox;
+            if (comboBox?.SelectedItem == null) return;
+            
+            _selectedClassification = comboBox.SelectedItem.ToString();
+            Console.WriteLine($"[Classification Changed] {_selectedClassification}");
+            
+            // ✅ 해당 분류에 속하는 종류 목록 업데이트
+            _isUpdatingClassification = true;
+            try
+            {
+                _allCategories = GetCategoriesByClassification(_selectedClassification);
+                
+                if (_categoryComboBox != null)
+                {
+                    _categoryComboBox.Items.Clear();
+                    foreach (var category in _allCategories)
+                    {
+                        _categoryComboBox.Items.Add(category);
+                    }
+                    
+                    // 첫 번째 종류 자동 선택
+                    if (_allCategories.Count > 0)
+                    {
+                        _categoryComboBox.SelectedIndex = 0;
+                    }
+                }
+            }
+            finally
+            {
+                _isUpdatingClassification = false;
+            }
         }
         
         /// <summary>
@@ -333,7 +514,7 @@ namespace BoltSpecProgram.UI
         /// </summary>
         private void OnCategorySelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (_isUpdatingCategory) return;
+            if (_isUpdatingCategory || _isUpdatingClassification) return;
             
             var comboBox = sender as ComboBox;
             if (comboBox?.SelectedItem == null) return;
